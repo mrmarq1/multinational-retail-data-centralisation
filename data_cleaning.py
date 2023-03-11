@@ -3,7 +3,7 @@ import pandas as pd
 import re
 
 class DataCleaning:
-    # AWS data
+    # AWS user data
     def clean_user_data(self):
         connector_aws = database_utils.DatabaseConnector()
         
@@ -37,6 +37,7 @@ class DataCleaning:
         
         connector_aws.upload_to_db(df, 'dim_users')
 
+    # PDF card data 
     def clean_card_data(self):
         extractor_pdf = data_extraction.DataExtractor()
         dfs = extractor_pdf.retrieve_pdf_data('https://data-handling-public.s3.eu-west-1.amazonaws.com/card_details.pdf')
@@ -52,12 +53,14 @@ class DataCleaning:
         df['expiry_date'] = pd.to_datetime(df['expiry_date'], format='%m%Y') + MonthEnd(0)
         df['card_provider'] = df['card_provider'].astype('category')
         df['date_payment_confirmed'] = pd.to_datetime(df['date_payment_confirmed'])
-        return df
+        
+        connector_pdf = database_utils.DatabaseConnector()
+        connector_pdf.upload_to_db(df, 'dim_card_details')
        
 # Clean AWS data and export
 cleaner_aws = DataCleaning()
 cleaner_aws.clean_user_data()
 
-# Clean PDF data
+# Clean PDF data and export
 cleaner_pdf = DataCleaning()
 cleaner_pdf.clean_card_data()
