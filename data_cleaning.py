@@ -3,7 +3,7 @@ import pandas as pd
 import re
 
 class DataCleaning:
-    # Clean AWS data
+    # AWS data
     def clean_user_data(self, table_name):
         connector_aws = database_utils.DatabaseConnector()
         
@@ -34,8 +34,9 @@ class DataCleaning:
             return row           
         df = df.apply(add_country_code, axis=1)
         df['address'] = df['address'].str.replace(r'\n',' ',regex=True)
-        return df
+        
+        connector_aws.upload_to_db(df, 'dim_users')
        
-# Apply cleaner to AWS data
+# Clean AWS data and export
 cleaner_aws = DataCleaning()
-cleaned_df = cleaner_aws.clean_user_data('legacy_users')
+cleaner_aws.clean_user_data('legacy_users')
