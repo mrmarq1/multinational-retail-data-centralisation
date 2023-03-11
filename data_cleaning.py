@@ -1,6 +1,7 @@
 import data_extraction, database_utils
 import pandas as pd
 import re
+from pandas.tseries.offsets import MonthEnd
 
 class DataCleaning:
     # AWS user data
@@ -47,7 +48,7 @@ class DataCleaning:
         str_card_numbers = df[df['card_number'].apply(type) == str]
         non_numerical_card_numbers = str_card_numbers['card_number'].str.findall('[^0-9]')
         df = df.drop(non_numerical_card_numbers.index).reset_index(drop=True)
-        non_numerical_expiries = df[df['expiry_date'].apply(lambda full_num : any(num.isalpha() for num in full_num))==True]
+        non_numerical_expiries = df[df['expiry_date'].apply(lambda full_num: any(num.isalpha() for num in full_num)) == True]
         df = df.drop(non_numerical_expiries.index).reset_index(drop=True)
         df['expiry_date'] = df['expiry_date'].str.replace('/','20')
         df['expiry_date'] = pd.to_datetime(df['expiry_date'], format='%m%Y') + MonthEnd(0)
@@ -57,10 +58,7 @@ class DataCleaning:
         connector_pdf = database_utils.DatabaseConnector()
         connector_pdf.upload_to_db(df, 'dim_card_details')
        
-# Clean AWS data and export
-cleaner_aws = DataCleaning()
-cleaner_aws.clean_user_data()
+cleaner = DataCleaning()
 
-# Clean PDF data and export
-cleaner_pdf = DataCleaning()
-cleaner_pdf.clean_card_data()
+cleaner.clean_user_data()
+cleaner.clean_card_data()
