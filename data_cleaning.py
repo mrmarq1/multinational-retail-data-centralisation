@@ -20,7 +20,7 @@ class DataCleaning:
         df = df.drop(df_dob_filter.index).reset_index(drop=True)
         df['date_of_birth'] = pd.to_datetime(df['date_of_birth'])
         df['join_date'] = pd.to_datetime(df['join_date'])
-        df['country_code'] = df['country_code'].apply(lambda x : x.replace('GGB', 'GB'))
+        df['country_code'] = df['country_code'].str.replace('GGB', 'GB')
         df['country_code'] = df['country_code'].astype('category')
         df['country'] = df['country'].astype('category')
         df['phone_number'] = df['phone_number'].str.replace('[()\-x\s.,]', '', regex=True)
