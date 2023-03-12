@@ -2,8 +2,6 @@ import pandas as pd
 from sqlalchemy import text
 import tabula
 import requests
-import os
-import boto3
 
 class DataExtractor():   
 
