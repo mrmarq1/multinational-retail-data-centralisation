@@ -1,4 +1,4 @@
-import data_extraction, database_utils
+import data_extraction, database_utils, header_key
 import pandas as pd
 import re
 from pandas.tseries.offsets import MonthEnd
@@ -58,7 +58,7 @@ class DataCleaning:
         connector_pdf = database_utils.DatabaseConnector()
         connector_pdf.upload_to_db(df, 'dim_card_details')
     
-    # API data
+    # API store data
     def clean_store_data(self):
         extractor_api = data_extraction.DataExtractor()
         extractor_api.list_number_of_stores('https://aqj7u5id95.execute-api.eu-west-1.amazonaws.com/prod/number_stores', header_key.KEY)
@@ -87,7 +87,8 @@ class DataCleaning:
         df = df.drop('lat', axis=1)
         df = df.reset_index(drop=True)
         
-        return df
+        connector_api = database_utils.DatabaseConnector()
+        connector_api.upload_to_db(df, 'dim_store_details')
 
 
 cleaner = DataCleaning()
