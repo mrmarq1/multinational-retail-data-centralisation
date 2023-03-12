@@ -57,8 +57,41 @@ class DataCleaning:
         
         connector_pdf = database_utils.DatabaseConnector()
         connector_pdf.upload_to_db(df, 'dim_card_details')
-       
+    
+    # API data
+    def clean_store_data(self):
+        extractor_api = data_extraction.DataExtractor()
+        extractor_api.list_number_of_stores('https://aqj7u5id95.execute-api.eu-west-1.amazonaws.com/prod/number_stores', header_key.KEY)
+        df = extractor_api.retrieve_store_data('https://aqj7u5id95.execute-api.eu-west-1.amazonaws.com/prod/store_details/{store}', header_key.KEY)
+
+        df['address'] = df['address'].str.replace('[-,/\.(\n) ]',' ', regex=True)
+        filter = df[df['address'].str.contains('\s')==False]
+        df = df.drop(filter.index)
+        filter = df[df['longitude'].str.contains('[\d.]')==False]
+        df = df.drop(filter.index)
+        df['longitude'] = df['longitude'].astype('float')
+        df['lat'] = df['lat'].astype('float')
+        df['locality'] = df['locality'].astype('category')
+        df['store_code'].str.findall('[^A-Z0-9-]').value_counts()
+        filter = df[df['staff_numbers'].str.isnumeric()==False]
+        df = df.drop(filter.index)
+        df['staff_numbers'] = df['staff_numbers'].astype('int')
+        df['opening_date'] = pd.to_datetime(df['opening_date'])
+        df['store_type'] = df['store_type'].astype('category')
+        df[df['latitude'].str.contains('[\d.]')==False]
+        df['latitude'] = df['latitude'].astype('float')
+        df['country_code'] = df['country_code'].astype('category')
+        df[df['continent'] == ('eeAmerica' and 'eeEurope')]
+        df['continent'] = df['continent'].str.replace('eeAmerica','America').str.replace('eeEurope','Europe')
+        df['continent'] = df['continent'].astype('category')
+        df = df.drop('lat', axis=1)
+        df = df.reset_index(drop=True)
+        
+        return df
+
+
 cleaner = DataCleaning()
 
-cleaner.clean_user_data()
-cleaner.clean_card_data()
+#cleaner.clean_user_data()
+#cleaner.clean_card_data()
+cleaner.clean_store_data()
