@@ -1,10 +1,10 @@
-import header_key
-
 import pandas as pd
 from sqlalchemy import text
 import tabula
 import requests
- 
+import os
+import boto3
+
 class DataExtractor():   
 
     def read_rds_table(self, connector, table_name):
@@ -34,6 +34,8 @@ class DataExtractor():
         
         return stores_df
 
-extractor = DataExtractor()
-extractor.list_number_of_stores('https://aqj7u5id95.execute-api.eu-west-1.amazonaws.com/prod/number_stores', header_key.KEY)
-stores_df = extractor.retrieve_store_data('https://aqj7u5id95.execute-api.eu-west-1.amazonaws.com/prod/store_details/{store}', header_key.KEY)
+    def extract_from_s3(self):
+        df = pd.read_csv('s3://data-handling-public/products.csv')
+        return df
+
+
