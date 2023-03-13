@@ -7,7 +7,6 @@ class DataCleaning:
     # AWS user data
     def clean_user_data(self):
         connector_aws = database_utils.DatabaseConnector()
-        
         extractor_aws = data_extraction.DataExtractor()
         df = extractor_aws.read_rds_table(connector_aws, 'legacy_users')
 
@@ -90,6 +89,43 @@ class DataCleaning:
         connector_api = database_utils.DatabaseConnector()
         connector_api.upload_to_db(df, 'dim_store_details')
 
+    # S3 products data
+    def convert_product_weights(self):
+        extractor_s3 = data_extraction.DataExtractor('s3://data-handling-public/products.csv')
+        df = extractor_s3.extract_from_s3()
+
+        nan_rows = df[df.isna().any(axis=1)]
+        df = df.drop(nan_rows.index)
+        
+        irregular_weights = df[df['weight'].str.contains('[A-Z]')==True]
+        df = df.drop(irregular_weights.index)
+
+        non_kg_filter = df[df['weight'].str.contains('kg') == False]
+        oz_filter = non_kg_filter[non_kg_filter['weight'].str.contains('oz')==True]
+        oz_filter['weight'] = (oz_filter['weight'].str.replace('oz','').astype(float)) * 28.3495
+        non_kg_filter.loc[oz_filter.index, 'weight'] = oz_filter['weight']
+
+        non_kg_filter['weight'] = non_kg_filter['weight'].str.replace('ml','').str.replace('g','').str.replace(' ','').str.replace('x','*')
+        weigths_to_calc = non_kg_filter[non_kg_filter['weight'].str.contains('\*') == True]
+        calc_weights = pd.Series(pd.eval(weigths_to_calc['weight']), weigths_to_calc.index)
+        non_kg_filter.loc[calc_weights.index, 'weight'] = calc_weights
+        non_kg_filter['weight'] = non_kg_filter['weight'].astype(float)
+        non_kg_filter['weight'] = non_kg_filter['weight'] / 1000
+        df.loc[non_kg_filter.index,'weight'] = non_kg_filter['weight']
+        df['weight'] = df['weight'].astype('string')
+        df['weight'] = df['weight'].str.replace('kg','', regex=False).astype('float')
+
+        df['product_price'] = df['product_price'].str.replace('£','')
+        df['product_price'] = df['product_price'].astype('float')
+
+        df['category'] = df['category'].astype('category')
+        df['EAN'] = df['EAN'].astype('float')
+        df['date_added'] = pd.to_datetime(df['date_added'])
+        df['removed'] = df['removed'].astype('category')
+        df = df.drop('Unnamed: 0', axis=1)
+        df = df.reset_index(drop=True)
+
+        return df
 
 cleaner = DataCleaning()
 
