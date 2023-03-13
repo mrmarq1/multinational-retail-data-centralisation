@@ -142,6 +142,22 @@ class DataCleaning:
 
         connector_aws.upload_to_db(df, 'orders_table')
 
+    def clean_date_times_data(self):
+        extractor_s3 = data_extraction.DataExtractor()
+        df = extractor_s3.extract_from_s3('https://data-handling-public.s3.eu-west-1.amazonaws.com/date_details.json', 'json')
+        
+        filter = df[df['timestamp'].str.contains('[A-Za-z]')==True]
+        df = df.drop(filter.index)
+        df['datetime'] = df['day']+'/'+df['month']+'/'+df['year']+' '+df['timestamp']
+        df['datetime'] = pd.to_datetime(df['datetime'])
+        df = df.drop(['timestamp','month','year','day'], axis=1)
+        df['time_period'] = df['time_period'].astype('category')
+        df['date_uuid'] = df['date_uuid'].astype('string')
+        df = df.reset_index(drop=True)
+
+        connector_s3 = database_utils.DatabaseConnector()
+        connector_s3.upload_to_db(df, 'dim_date_times')
+
 cleaner = DataCleaning()
 
 #cleaner.clean_user_data()
@@ -149,3 +165,4 @@ cleaner = DataCleaning()
 #cleaner.clean_store_data()
 #cleaner.clean_products_data()
 #cleaner.clean_orders_data()
+cleaner.clean_date_times_data()
