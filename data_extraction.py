@@ -32,8 +32,8 @@ class DataExtractor():
         
         return stores_df
 
-    def extract_from_s3(self):
-        df = pd.read_csv('s3://data-handling-public/products.csv')
+    def extract_from_s3(self, link):
+        df = pd.read_csv(link)
         return df
 
 
