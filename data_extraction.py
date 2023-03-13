@@ -32,8 +32,11 @@ class DataExtractor():
         
         return stores_df
 
-    def extract_from_s3(self, link):
-        df = pd.read_csv(link)
+    def extract_from_s3(self, link, file_type):
+        if file_type=='csv':
+            df = pd.read_csv(link)
+        if file_type=='json':
+            df = pd.read_json(link)    
         return df
 
 
