@@ -11,13 +11,12 @@ class DataCleaning:
         extractor_aws = data_extraction.DataExtractor()
         df = extractor_aws.read_rds_table(connector_aws, 'legacy_users')
 
-        df = df.sort_values('last_name').reset_index(drop=True)
-        df = df.drop(df.index[:4]).reset_index(drop=True)
+        df= df.rename(columns={'index':'idx'})
         user_id_duplicates = df[df['user_uuid'].duplicated(keep='first')==True]
         df = df.drop(user_id_duplicates.index)
         df_dob_filter = df[df['date_of_birth'].str.contains('.*-+|/+.*') == False]['date_of_birth']
         df_dob_filter = df_dob_filter[df_dob_filter.str.isupper()==True]
-        df = df.drop(df_dob_filter.index).reset_index(drop=True)
+        df = df.drop(df_dob_filter.index)
         df['date_of_birth'] = pd.to_datetime(df['date_of_birth'])
         df['join_date'] = pd.to_datetime(df['join_date'])
         df['country_code'] = df['country_code'].str.replace('GGB', 'GB')
@@ -34,9 +33,10 @@ class DataCleaning:
             return row           
         df = df.apply(add_country_code, axis=1)
         df['address'] = df['address'].str.replace(r'\n',' ',regex=True)
-        
         to_string_cols = df.iloc[:, np.r_[1:3,4:10,11]]
         df[to_string_cols.columns] = to_string_cols.astype('string')
+        df = df.reset_index(drop=True)
+
         connector_aws.upload_to_db(df, 'dim_users')
 
     # PDF card data 
@@ -54,7 +54,7 @@ class DataCleaning:
         df['card_provider'] = df['card_provider'].astype('category')
         df['date_payment_confirmed'] = pd.to_datetime(df['date_payment_confirmed'])
         df['card_number'] = df['card_number'].astype('string')
-        
+
         connector_pdf = database_utils.DatabaseConnector()
         connector_pdf.upload_to_db(df, 'dim_card_details')
     
@@ -63,7 +63,8 @@ class DataCleaning:
         extractor_api = data_extraction.DataExtractor()
         extractor_api.list_number_of_stores('https://aqj7u5id95.execute-api.eu-west-1.amazonaws.com/prod/number_stores', header_key.KEY)
         df = extractor_api.retrieve_store_data('https://aqj7u5id95.execute-api.eu-west-1.amazonaws.com/prod/store_details/{store}', header_key.KEY)
-
+        
+        df = df.rename(columns={'index':'idx'})
         df['address'] = df['address'].str.replace('[-,/\.(\n) ]',' ', regex=True)
         filter = df[df['address'].str.contains('\s')==False]
         df = df.drop(filter.index)
@@ -81,18 +82,12 @@ class DataCleaning:
         df[['address','store_code']] = df[['address','store_code']].astype('string')
         df = df.drop('lat', axis=1)
         df = df.reset_index(drop=True)
-        
+
         connector_api = database_utils.DatabaseConnector()
         connector_api.upload_to_db(df, 'dim_store_details')
 
-    # S3 products data
-    def convert_product_weights(self):
-        extractor_s3 = data_extraction.DataExtractor()
-        df = extractor_s3.extract_from_s3('s3://data-handling-public/products.csv')
-
-        nan_rows = df[df.isna().any(axis=1)]
-        df = df.drop(nan_rows.index)
-        
+    # S3 products data - weight conversion
+    def convert_product_weights(self, df):        
         irregular_weights = df[df['weight'].str.contains('[A-Z]')==True]
         df = df.drop(irregular_weights.index)
 
@@ -111,22 +106,46 @@ class DataCleaning:
         df['weight'] = df['weight'].astype('string')
         df['weight'] = df['weight'].str.replace('kg','', regex=False).astype('float')
 
+        return df
+    
+    # S3 products data
+    def clean_products_data(self):
+        extractor_s3 = data_extraction.DataExtractor()
+        df = extractor_s3.extract_from_s3('s3://data-handling-public/products.csv', 'csv')
+        df = self.convert_product_weights(df)
+        
+        nan_rows = df[df.isna().any(axis=1)]
+        df = df.drop(nan_rows.index)
         df['product_price'] = df['product_price'].str.replace('£','')
         df['product_price'] = df['product_price'].astype('float')
-
         df['date_added'] = pd.to_datetime(df['date_added'])
         df[['category','removed']] = df[['category','removed']].astype('category')
         df[['product_name','EAN','uuid','product_code']] = df[['product_name','EAN','uuid','product_code']].astype('string')
-
         df = df.drop('Unnamed: 0', axis=1)
         df = df.reset_index(drop=True)
 
         connector_s3 = database_utils.DatabaseConnector()
         connector_s3.upload_to_db(df, 'dim_products')
 
+    # AWS orders data
+    def clean_orders_data(self):
+        connector_aws = database_utils.DatabaseConnector()
+        extractor_aws = data_extraction.DataExtractor()
+        df = extractor_aws.read_rds_table(connector_aws, 'orders_table')
+        
+        df = df.rename(columns={'index':'idx'})
+        df = df.drop(['first_name','last_name','1'], axis=1)
+        df['product_quantity'] = df['product_quantity'].astype('category')
+        to_string_cols = ['date_uuid','user_uuid','store_code','product_code']
+        df[to_string_cols] = df[to_string_cols].astype('string')
+        df = df.reset_index(drop=True)
+
+        connector_aws.upload_to_db(df, 'orders_table')
+
 cleaner = DataCleaning()
 
 #cleaner.clean_user_data()
 #cleaner.clean_card_data()
 #cleaner.clean_store_data()
-cleaner.convert_product_weights()
+#cleaner.clean_products_data()
+#cleaner.clean_orders_data()
