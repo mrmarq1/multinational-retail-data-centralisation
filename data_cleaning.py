@@ -125,7 +125,8 @@ class DataCleaning:
         df = df.drop('Unnamed: 0', axis=1)
         df = df.reset_index(drop=True)
 
-        return df
+        connector_s3 = database_utils.DatabaseConnector()
+        connector_s3.upload_to_db(df, 'dim_products')
 
 cleaner = DataCleaning()
 
