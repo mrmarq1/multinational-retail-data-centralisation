@@ -91,8 +91,8 @@ class DataCleaning:
 
     # S3 products data
     def convert_product_weights(self):
-        extractor_s3 = data_extraction.DataExtractor('s3://data-handling-public/products.csv')
-        df = extractor_s3.extract_from_s3()
+        extractor_s3 = data_extraction.DataExtractor()
+        df = extractor_s3.extract_from_s3('s3://data-handling-public/products.csv')
 
         nan_rows = df[df.isna().any(axis=1)]
         df = df.drop(nan_rows.index)
@@ -132,4 +132,5 @@ cleaner = DataCleaning()
 
 #cleaner.clean_user_data()
 #cleaner.clean_card_data()
-cleaner.clean_store_data()
+#cleaner.clean_store_data()
+cleaner.convert_product_weights()
