@@ -1,4 +1,5 @@
 import data_extraction, database_utils, header_key
+import numpy as np
 import pandas as pd
 import re
 from pandas.tseries.offsets import MonthEnd
@@ -20,8 +21,7 @@ class DataCleaning:
         df['date_of_birth'] = pd.to_datetime(df['date_of_birth'])
         df['join_date'] = pd.to_datetime(df['join_date'])
         df['country_code'] = df['country_code'].str.replace('GGB', 'GB')
-        df['country_code'] = df['country_code'].astype('category')
-        df['country'] = df['country'].astype('category')
+        df[['country_code','country']] = df[['country_code','country']].astype('category')
         df['phone_number'] = df['phone_number'].str.replace('[()\-x\s.,]', '', regex=True)
         def add_country_code(row):
           mapping = {'GB': '44', 'DE': '49', 'US': '01'}
@@ -35,6 +35,8 @@ class DataCleaning:
         df = df.apply(add_country_code, axis=1)
         df['address'] = df['address'].str.replace(r'\n',' ',regex=True)
         
+        to_string_cols = df.iloc[:, np.r_[1:3,4:10,11]]
+        df[to_string_cols.columns] = to_string_cols.astype('string')
         connector_aws.upload_to_db(df, 'dim_users')
 
     # PDF card data 
@@ -47,12 +49,11 @@ class DataCleaning:
         str_card_numbers = df[df['card_number'].apply(type) == str]
         non_numerical_card_numbers = str_card_numbers['card_number'].str.findall('[^0-9]')
         df = df.drop(non_numerical_card_numbers.index).reset_index(drop=True)
-        non_numerical_expiries = df[df['expiry_date'].apply(lambda full_num: any(num.isalpha() for num in full_num)) == True]
-        df = df.drop(non_numerical_expiries.index).reset_index(drop=True)
         df['expiry_date'] = df['expiry_date'].str.replace('/','20')
         df['expiry_date'] = pd.to_datetime(df['expiry_date'], format='%m%Y') + MonthEnd(0)
         df['card_provider'] = df['card_provider'].astype('category')
         df['date_payment_confirmed'] = pd.to_datetime(df['date_payment_confirmed'])
+        df['card_number'] = df['card_number'].astype('string')
         
         connector_pdf = database_utils.DatabaseConnector()
         connector_pdf.upload_to_db(df, 'dim_card_details')
@@ -68,21 +69,16 @@ class DataCleaning:
         df = df.drop(filter.index)
         filter = df[df['longitude'].str.contains('[\d.]')==False]
         df = df.drop(filter.index)
-        df['longitude'] = df['longitude'].astype('float')
-        df['lat'] = df['lat'].astype('float')
-        df['locality'] = df['locality'].astype('category')
-        df['store_code'].str.findall('[^A-Z0-9-]').value_counts()
         filter = df[df['staff_numbers'].str.isnumeric()==False]
         df = df.drop(filter.index)
         df['staff_numbers'] = df['staff_numbers'].astype('int')
         df['opening_date'] = pd.to_datetime(df['opening_date'])
-        df['store_type'] = df['store_type'].astype('category')
         df[df['latitude'].str.contains('[\d.]')==False]
-        df['latitude'] = df['latitude'].astype('float')
-        df['country_code'] = df['country_code'].astype('category')
+        df[['latitude', 'longitude', 'lat']] = df[['latitude','longitude','lat']].astype('float')
         df[df['continent'] == ('eeAmerica' and 'eeEurope')]
         df['continent'] = df['continent'].str.replace('eeAmerica','America').str.replace('eeEurope','Europe')
-        df['continent'] = df['continent'].astype('category')
+        df[['continent', 'country_code', 'store_type','locality']] = df[['continent', 'country_code', 'store_type','locality']].astype('category')
+        df[['address','store_code']] = df[['address','store_code']].astype('string')
         df = df.drop('lat', axis=1)
         df = df.reset_index(drop=True)
         
@@ -118,10 +114,10 @@ class DataCleaning:
         df['product_price'] = df['product_price'].str.replace('£','')
         df['product_price'] = df['product_price'].astype('float')
 
-        df['category'] = df['category'].astype('category')
-        df['EAN'] = df['EAN'].astype('float')
         df['date_added'] = pd.to_datetime(df['date_added'])
-        df['removed'] = df['removed'].astype('category')
+        df[['category','removed']] = df[['category','removed']].astype('category')
+        df[['product_name','EAN','uuid','product_code']] = df[['product_name','EAN','uuid','product_code']].astype('string')
+
         df = df.drop('Unnamed: 0', axis=1)
         df = df.reset_index(drop=True)
 
