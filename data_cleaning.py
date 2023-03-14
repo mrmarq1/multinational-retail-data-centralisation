@@ -47,7 +47,7 @@ class DataCleaning:
         df = df.reset_index(drop=True)
         
         str_card_numbers = df[df['card_number'].apply(type) == str]
-        non_numerical_card_numbers = str_card_numbers['card_number'].str.findall('[^0-9]')
+        non_numerical_card_numbers = str_card_numbers[str_card_numbers['card_number'].str.contains('\D')==True]
         df = df.drop(non_numerical_card_numbers.index).reset_index(drop=True)
         df['expiry_date'] = df['expiry_date'].str.replace('/','20')
         df['expiry_date'] = pd.to_datetime(df['expiry_date'], format='%m%Y') + MonthEnd(0)
@@ -65,22 +65,22 @@ class DataCleaning:
         df = extractor_api.retrieve_store_data('https://aqj7u5id95.execute-api.eu-west-1.amazonaws.com/prod/store_details/{store}', header_key.KEY)
         
         df = df.rename(columns={'index':'idx'})
+        filter = df[df['longitude'].str.contains('\d.')==False]
+        df = df.drop(filter[1:].index)
+        df.loc[filter[:1].index, ['longitude','latitude']] = '0'
         df['address'] = df['address'].str.replace('[-,/\.(\n) ]',' ', regex=True)
         filter = df[df['address'].str.contains('\s')==False]
         df = df.drop(filter.index)
-        filter = df[df['longitude'].str.contains('[\d.]')==False]
-        df = df.drop(filter.index)
         filter = df[df['staff_numbers'].str.isnumeric()==False]
-        df = df.drop(filter.index)
+        df.loc[filter.index, 'staff_numbers'] = filter['staff_numbers'].str.replace('[A-Za-z]','', regex=True)
         df['staff_numbers'] = df['staff_numbers'].astype('int')
         df['opening_date'] = pd.to_datetime(df['opening_date'])
-        df[df['latitude'].str.contains('[\d.]')==False]
-        df[['latitude', 'longitude', 'lat']] = df[['latitude','longitude','lat']].astype('float')
+        df = df.drop('lat', axis=1)
+        df[['latitude', 'longitude']] = df[['latitude','longitude']].astype('float')
         df[df['continent'] == ('eeAmerica' and 'eeEurope')]
         df['continent'] = df['continent'].str.replace('eeAmerica','America').str.replace('eeEurope','Europe')
         df[['continent', 'country_code', 'store_type','locality']] = df[['continent', 'country_code', 'store_type','locality']].astype('category')
         df[['address','store_code']] = df[['address','store_code']].astype('string')
-        df = df.drop('lat', axis=1)
         df = df.reset_index(drop=True)
 
         connector_api = database_utils.DatabaseConnector()
@@ -115,9 +115,10 @@ class DataCleaning:
         df = self.convert_product_weights(df)
         
         nan_rows = df[df.isna().any(axis=1)]
-        df = df.drop(nan_rows.index)
+        df = df.drop(nan_rows[:-1].index)
+        df.loc[nan_rows[-1:].index, 'weight'] = '0'
         df['product_price'] = df['product_price'].str.replace('£','')
-        df['product_price'] = df['product_price'].astype('float')
+        df[['product_price','weight']] = df[['product_price','weight']].astype('float')
         df['date_added'] = pd.to_datetime(df['date_added'])
         df[['category','removed']] = df[['category','removed']].astype('category')
         df[['product_name','EAN','uuid','product_code']] = df[['product_name','EAN','uuid','product_code']].astype('string')
@@ -136,23 +137,22 @@ class DataCleaning:
         df = df.rename(columns={'index':'idx'})
         df = df.drop(['first_name','last_name','1'], axis=1)
         df['product_quantity'] = df['product_quantity'].astype('category')
-        to_string_cols = ['date_uuid','user_uuid','store_code','product_code']
+        to_string_cols = ['date_uuid','user_uuid','store_code','product_code','card_number']
         df[to_string_cols] = df[to_string_cols].astype('string')
         df = df.reset_index(drop=True)
 
         connector_aws.upload_to_db(df, 'orders_table')
 
+    # S3 times data
     def clean_date_times_data(self):
         extractor_s3 = data_extraction.DataExtractor()
         df = extractor_s3.extract_from_s3('https://data-handling-public.s3.eu-west-1.amazonaws.com/date_details.json', 'json')
         
         filter = df[df['timestamp'].str.contains('[A-Za-z]')==True]
         df = df.drop(filter.index)
-        df['datetime'] = df['day']+'/'+df['month']+'/'+df['year']+' '+df['timestamp']
-        df['datetime'] = pd.to_datetime(df['datetime'])
-        df = df.drop(['timestamp','month','year','day'], axis=1)
+        df[['month','year','day']] = df[['month','year','day']].astype('int')
         df['time_period'] = df['time_period'].astype('category')
-        df['date_uuid'] = df['date_uuid'].astype('string')
+        df[['date_uuid', 'timestamp']] = df[['date_uuid', 'timestamp']].astype('string')
         df = df.reset_index(drop=True)
 
         connector_s3 = database_utils.DatabaseConnector()
@@ -163,6 +163,6 @@ cleaner = DataCleaning()
 #cleaner.clean_user_data()
 #cleaner.clean_card_data()
 #cleaner.clean_store_data()
-#cleaner.clean_products_data()
+cleaner.clean_products_data()
 #cleaner.clean_orders_data()
-cleaner.clean_date_times_data()
+#cleaner.clean_date_times_data()
