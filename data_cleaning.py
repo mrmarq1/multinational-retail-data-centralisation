@@ -11,7 +11,6 @@ class DataCleaning:
         extractor_aws = data_extraction.DataExtractor()
         df = extractor_aws.read_rds_table(connector_aws, 'legacy_users')
 
-        df= df.rename(columns={'index':'idx'})
         user_id_duplicates = df[df['user_uuid'].duplicated(keep='first')==True]
         df = df.drop(user_id_duplicates.index)
         df_dob_filter = df[df['date_of_birth'].str.contains('.*-+|/+.*') == False]['date_of_birth']
@@ -35,6 +34,7 @@ class DataCleaning:
         df['address'] = df['address'].str.replace(r'\n',' ',regex=True)
         to_string_cols = df.iloc[:, np.r_[1:3,4:10,11]]
         df[to_string_cols.columns] = to_string_cols.astype('string')
+        df = df.drop('index', axis=1)
         df = df.reset_index(drop=True)
 
         connector_aws.upload_to_db(df, 'dim_users')
@@ -64,7 +64,6 @@ class DataCleaning:
         extractor_api.list_number_of_stores('https://aqj7u5id95.execute-api.eu-west-1.amazonaws.com/prod/number_stores', header_key.KEY)
         df = extractor_api.retrieve_store_data('https://aqj7u5id95.execute-api.eu-west-1.amazonaws.com/prod/store_details/{store}', header_key.KEY)
         
-        df = df.rename(columns={'index':'idx'})
         filter = df[df['longitude'].str.contains('\d.')==False]
         df = df.drop(filter[1:].index)
         df.loc[filter[:1].index, ['longitude','latitude']] = '0'
@@ -82,6 +81,7 @@ class DataCleaning:
         to_category = ['continent', 'country_code', 'store_type','locality']
         df[to_category] = df[to_category].astype('category')
         df[['address','store_code']] = df[['address','store_code']].astype('string')
+        df = df.drop('index', axis=1)
         df = df.reset_index(drop=True)
 
         connector_api = database_utils.DatabaseConnector()
@@ -138,11 +138,11 @@ class DataCleaning:
         extractor_aws = data_extraction.DataExtractor()
         df = extractor_aws.read_rds_table(connector_aws, 'orders_table')
         
-        df = df.rename(columns={'index':'idx'})
         df = df.drop(['first_name','last_name','1'], axis=1)
         df['product_quantity'] = df['product_quantity'].astype('category')
         to_string_cols = ['date_uuid','user_uuid','store_code','product_code','card_number']
         df[to_string_cols] = df[to_string_cols].astype('string')
+        df = df.drop('index', axis=1)
         df = df.reset_index(drop=True)
 
         connector_aws.upload_to_db(df, 'orders_table')
