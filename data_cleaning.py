@@ -21,16 +21,13 @@ class DataCleaning:
         df['country_code'] = df['country_code'].str.replace('GGB', 'GB')
         df[['country_code','country']] = df[['country_code','country']].astype('category')
         df['phone_number'] = df['phone_number'].str.replace('[()\-x\s.,]', '', regex=True)
-        def add_country_code(row):
-          mapping = {'GB': '44', 'DE': '49', 'US': '01'}
-          number = row['phone_number']
-          if re.match('[^+]', number):
-            row['phone_number'] = mapping[row['country_code']] + number
-            return row
-          else:
-            row['phone_number'] = re.sub('\+','',number)
-            return row           
-        df = df.apply(add_country_code, axis=1)
+        def num_cleaning(country, ext):
+            df.loc[((~df['phone_number'].str.contains('[+]')) & 
+            (df['country_code']==country)), 'phone_number'] = ext + df['phone_number']
+        mapping = {'GB': '44', 'DE': '49', 'US': '01'}
+        for country, ext in mapping.items():
+            num_cleaning(country, ext)
+        df['phone_number'] = df['phone_number'].str.replace('+','', regex=False)
         df['address'] = df['address'].str.replace(r'\n',' ',regex=True)
         to_string_cols = df.iloc[:, np.r_[1:3,4:10,11]]
         df[to_string_cols.columns] = to_string_cols.astype('string')
