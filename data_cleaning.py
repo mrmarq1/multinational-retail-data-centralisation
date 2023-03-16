@@ -79,7 +79,8 @@ class DataCleaning:
         df[['latitude', 'longitude']] = df[['latitude','longitude']].astype('float')
         df[df['continent'] == ('eeAmerica' and 'eeEurope')]
         df['continent'] = df['continent'].str.replace('eeAmerica','America').str.replace('eeEurope','Europe')
-        df[['continent', 'country_code', 'store_type','locality']] = df[['continent', 'country_code', 'store_type','locality']].astype('category')
+        to_category = ['continent', 'country_code', 'store_type','locality']
+        df[to_category] = df[to_category].astype('category')
         df[['address','store_code']] = df[['address','store_code']].astype('string')
         df = df.reset_index(drop=True)
 
@@ -91,20 +92,22 @@ class DataCleaning:
         irregular_weights = df[df['weight'].str.contains('[A-Z]')==True]
         df = df.drop(irregular_weights.index)
 
-        non_kg_filter = df[df['weight'].str.contains('kg') == False]
-        oz_filter = non_kg_filter[non_kg_filter['weight'].str.contains('oz')==True]
-        oz_filter['weight'] = (oz_filter['weight'].str.replace('oz','').astype(float)) * 28.3495
-        non_kg_filter.loc[oz_filter.index, 'weight'] = oz_filter['weight']
+        oz_to_g = (df[df['weight'].str.contains('oz')==True]['weight']
+                    .str.replace('oz','').astype(float) * 28.3495)
+        df.loc[oz_to_g.index,'weight'] = oz_to_g
 
-        non_kg_filter['weight'] = non_kg_filter['weight'].str.replace('ml','').str.replace('g','').str.replace(' ','').str.replace('x','*')
+        non_kg_filter = df[df['weight'].str.contains('kg') == False].copy()
+        non_kg_filter['weight'] = (non_kg_filter['weight']
+                                    .str.replace('ml','')
+                                    .str.replace('g','')
+                                    .str.replace(' ','')
+                                    .str.replace('x','*'))
         weigths_to_calc = non_kg_filter[non_kg_filter['weight'].str.contains('\*') == True]
         calc_weights = pd.Series(pd.eval(weigths_to_calc['weight']), weigths_to_calc.index)
         non_kg_filter.loc[calc_weights.index, 'weight'] = calc_weights
-        non_kg_filter['weight'] = non_kg_filter['weight'].astype(float)
-        non_kg_filter['weight'] = non_kg_filter['weight'] / 1000
-        df.loc[non_kg_filter.index,'weight'] = non_kg_filter['weight']
-        df['weight'] = df['weight'].astype('string')
-        df['weight'] = df['weight'].str.replace('kg','', regex=False).astype('float')
+        non_kg_filter['weight'] = (non_kg_filter['weight'].astype(float)) / 1000
+        df.loc[non_kg_filter.index, :] = non_kg_filter
+        df['weight'] = (df['weight'].str.replace('kg','').astype('float'))
 
         return df
     
@@ -121,10 +124,11 @@ class DataCleaning:
         df[['product_price','weight']] = df[['product_price','weight']].astype('float')
         df['date_added'] = pd.to_datetime(df['date_added'])
         df[['category','removed']] = df[['category','removed']].astype('category')
-        df[['product_name','EAN','uuid','product_code']] = df[['product_name','EAN','uuid','product_code']].astype('string')
-        df = df.drop('Unnamed: 0', axis=1)
+        to_string = ['product_name','EAN','uuid','product_code']
+        df[to_string] = df[to_string].astype('string')
         df = df.reset_index(drop=True)
-
+        df = df.drop('Unnamed: 0', axis=1)
+        
         connector_s3 = database_utils.DatabaseConnector()
         connector_s3.upload_to_db(df, 'dim_products')
 
@@ -163,6 +167,6 @@ cleaner = DataCleaning()
 #cleaner.clean_user_data()
 #cleaner.clean_card_data()
 #cleaner.clean_store_data()
-cleaner.clean_products_data()
+#cleaner.clean_products_data()
 #cleaner.clean_orders_data()
 #cleaner.clean_date_times_data()
