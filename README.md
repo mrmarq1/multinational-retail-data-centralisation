@@ -97,8 +97,13 @@ This project aims to recreate the scenario of working for a MNC. A MNC with a di
 
 ## Created database schema
 
-- Used SQL to further amend tables in pgadmin4, iuncluding casting the columns to correct data types.
+- Used SQL to further amend tables in pgadmin4 via VSC extension, including casting the columns to correct data types.
+
+![vsc_sql](https://github.com/mrmarq1/multinational-retail-data-centralisation/assets/126958930/c9c2e8ab-844b-4a77-b858-279350d9bf0c)
+
 - Created primary and foreign keys to establish a star-based schema with the orders table at the centre.
+
+![pgadmin4_orders](https://github.com/mrmarq1/multinational-retail-data-centralisation/assets/126958930/f38bca93-9df2-44f3-abba-ee0319880198)
 
 ## Queried data
 
