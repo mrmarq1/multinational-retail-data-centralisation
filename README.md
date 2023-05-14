@@ -111,4 +111,4 @@ This project aims to recreate the scenario of working for a MNC. A MNC with a di
 
 ![vsc_sql_ctes](https://github.com/mrmarq1/multinational-retail-data-centralisation/assets/126958930/48cbd53d-5292-4863-af95-26b1cc2e73cd)
 
-- Questions answered included: 'How many stores does the business have and in which country?', 'How many sales are coming from online?', 'What % of sales come via each store type?', 'Which month in each year produced the highest cost of sales?' and 'How quickly is the company making sales?'.
+- Questions answered via queries included: 'How many stores does the business have and in which country?', 'How many sales are coming from online?', 'What % of sales come via each store type?', 'Which month in each year produced the highest cost of sales?' and 'How quickly is the company making sales?'.
