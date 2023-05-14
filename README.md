@@ -75,8 +75,32 @@ This project aims to recreate the scenario of working for a MNC. A MNC with a di
 
 ### Orders data
 
+#### Extracted data
+- Used previous method to extract data from AWS RDS database to get product order table.
+
+#### Cleaned data 
+- Created a method within the DataCleaning class to clean orders, including removing first_name, last_name and 1 columns so table columns match wuth other tables for subsequent star-based schema enforcement.
+
+#### Sent data to local database
+- Called previously created method to send cleaned orders data to local PostgreSQL database as a table named 'dim_orders'.
+
 ### Date events data
+
+#### Extracted data
+- Altered previous method for extracting csv data from a s3 bucket to take an argument for file type such that the date events data JSON file could be also extracted.
+
+#### Cleaned data 
+- Created a method within the DataCleaning class to clean date events and ensure correct data types.
+
+#### Sent data to local database
+- Called previously created method to send cleaned date events data to local PostgreSQL database as a table named 'dim_date_times'.
 
 ## Created database schema
 
+- Used SQL to further amend tables in pgadmin4, iuncluding casting the columns to correct data types.
+- Created primary and foreign keys to establish a star-based schema with the orders table at the centre.
+
 ## Queried data
+
+- Queried the data with SQL, often leveraging JOIN statements based on star-based schema.
+- Questions answered included: 'How many stores does the business have and in which country?', 'How many sales are coming from online?', 'What % of sales come via each store type?', 'Which month in each year produced the highest cost of sales?' and 'How quickly is the company making sales?'.
