@@ -12,7 +12,7 @@ This project aims to recreate the scenario of working for a MNC. A MNC with a di
 - How to work with pgadmin4 and set up a PostgreSQL database such that data can be imported into it and queried. 
 - What the use cases are for Spark's Pandas API.
 - Reminder of importance of taking advantage of Pandas vectorized operations as much as possible and the difference in various 'str' related functions.
-- How to work with / query a PostgreSQL database remotely in VSC via extensions
+- How to work with / query a PostgreSQL database remotely in VSC via extensions.
 
 ## Project Breakdown
 
